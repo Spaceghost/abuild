@@ -24,10 +24,20 @@ fi
 
 # defaults
 : ${FAKEROOT:="fakeroot"}
-: ${SUDO_APK:="abuild-apk --no-interactive"}
 : ${APK:="apk"}
-: ${ADDUSER:="abuild-adduser"}
-: ${ADDGROUP:="abuild-addgroup"}
+if command -v abuild-apk >/dev/null; then
+	: ${SUDO_APK:="abuild-apk --no-interactive"}
+	: ${ADDUSER:="abuild-adduser"}
+	: ${ADDGROUP:="abuild-addgroup"}
+else
+	if [ -z "$SUDO" ] && ! command -v doas >/dev/null && command -v sudo >/dev/null; then
+		SUDO=sudo
+	fi
+	: ${SUDO:=doas}
+	: ${SUDO_APK:="$SUDO apk --no-interactive"}
+	: ${ADDUSER:="$SUDO adduser"}
+	: ${ADDGROUP:="$SUDO addgroup"}
+fi
 
 apk_opt_wait="--wait 30"
 doc_threshold=$((2 * 1024 * 1024)) # 2 MiB
