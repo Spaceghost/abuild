@@ -21,7 +21,7 @@
 #MAINTAINER="$PACKAGER"
 
 # what to clean up after a successful build
-#CLEANUP="srcdir bldroot pkgdir deps"
+#CLEANUP="srcdir bldroot pkgdir tmpdir deps"
 
 # what to cleanup after a failed build
 #ERROR_CLEANUP="bldroot deps"
