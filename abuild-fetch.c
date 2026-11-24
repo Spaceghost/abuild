@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 
 #include <sys/file.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 
 #include <err.h>
@@ -115,6 +116,35 @@ static int try_lock(int lockfd)
 	return lockf(lockfd, F_TLOCK, 0) == 0;
 }
 
+/* Keep a failed swarm attempt separate from the resumable HTTP partial file. */
+static bool webseed_fetch(char *url, const char *outfile)
+{
+	char *helper = getenv("ABUILD_WEBSEED_FETCHER");
+	char *checksum = getenv("ABUILD_WEBSEED_CHECKSUM");
+	char staging[PATH_MAX];
+	int fd, n;
+	bool downloaded = false;
+
+	if (!helper || helper[0] != '/' || !checksum || !*checksum)
+		return false;
+	if (strncmp(url, "http://", 7) != 0 && strncmp(url, "https://", 8) != 0)
+		return false;
+	n = snprintf(staging, sizeof staging, "%s.webseed.XXXXXX", outfile);
+	if (n < 0 || (size_t)n >= sizeof staging) return false;
+	fd = mkstemp(staging);
+	if (fd < 0) return false;
+	char *argv[] = { helper, "fetch", "--checksum", checksum, url, staging, NULL };
+	if (fork_exec(argv, 0) == 0) {
+		mode_t mask = umask(0);
+		umask(mask);
+		if (fchmod(fd, 0666 & ~mask) == 0 && rename(staging, outfile) == 0)
+			downloaded = true;
+	}
+	close(fd);
+	if (!downloaded) unlink(staging);
+	return downloaded;
+}
+
 /* create or wait for an NFS-safe lockfile and fetch url with curl or wget */
 int fetch(char *url, const char *destdir, bool insecure)
 {
@@ -148,7 +178,7 @@ int fetch(char *url, const char *destdir, bool insecure)
 
 	lockfd = acquire_lock(lockfile);
 
-	if (access(outfile, F_OK) == 0)
+	if (access(outfile, F_OK) == 0 || webseed_fetch(url, outfile))
 		goto fetch_done;
 
 	/* enable insecure mode when http. This may be useful when it redirects to https */

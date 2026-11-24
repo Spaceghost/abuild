@@ -406,9 +406,26 @@ sourcecheck() {
 }
 
 uri_fetch() {
-	local uri="$1"
+	local uri="$1" checksum filename
 	msg "Fetching $uri"
-	abuild-fetch -d "$SRCDEST" "$uri"
+	if [ -n "${ABUILD_WEBSEED_FETCHER:-}" ]; then
+		filename=$(filename_from_uri "$uri")
+		checksum=$(checksum_for_source "$filename")
+	fi
+	ABUILD_WEBSEED_FETCHER="${ABUILD_WEBSEED_FETCHER:-}" ABUILD_WEBSEED_CHECKSUM="$checksum" \
+		abuild-fetch -d "$SRCDEST" "$uri"
+}
+
+checksum_for_source() {
+	local filename="$1"
+	set -- ${sha512sums:-$sha256sums}
+	while [ "$#" -ge 2 ]; do
+		if [ "$2" = "$filename" ]; then
+			printf '%s:%s\n' "$sumalgo" "$1"
+			return
+		fi
+		shift 2
+	done
 }
 
 is_remote() {

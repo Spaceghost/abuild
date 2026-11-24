@@ -7,6 +7,9 @@
 #USE_CCACHE=1
 
 # where downloaded files are stored
+# Absolute path to the optional Cascadia apk-webseed helper.
+#ABUILD_WEBSEED_FETCHER=/usr/local/bin/apk-webseed
+
 #SRCDEST=${XDG_CACHE_HOME:-$HOME/.cache}/abuild
 
 # uncomment line below to store built packages in other location
